@@ -95,6 +95,13 @@ SELECT
     MAX(order_date) AS most_recent_date
 FROM order_details;
 
+-- 1.a What day of the week has the most orders?
+SELECT
+	DAYNAME(order_date) AS day_of_week,
+    COUNT(*) AS total_orders
+FROM order_details
+GROUP BY DAYNAME(order_date)
+ORDER BY total_orders DESC
 
 -- 2. How many orders were made within this date range? How many items were ordered within this date range?
 SELECT
