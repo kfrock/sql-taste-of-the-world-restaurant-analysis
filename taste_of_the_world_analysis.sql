@@ -8,18 +8,24 @@ in order to make data-driven decisions around menu optimization, pricing, and pr
 */
 USE restaurant_db;
 
+-- Data overview
+
+SELECT *
+FROM menu_items
+ORDER BY item_name DESC;
+
+SELECT *
+FROM order_details;
+
 /* Objective One: Explore items in table */
 
--- 1. View the menu_items table
-SELECT *
-FROM menu_items;
+-- 1. How many distinct menu items are there?
 
--- 2. How many distinct menu items are there?
 SELECT 
 	COUNT(DISTINCT item_name) AS number_of_items_on_menu
 FROM menu_items;
 
--- 3. What are the least/most expensive dishes on the menu?
+-- 2. What are the least/most expensive dishes on the menu?
 
 SELECT 
 	'Least expensive' AS category,
@@ -37,6 +43,7 @@ SELECT
 FROM menu_items
 WHERE price = (SELECT MAX(price) FROM menu_items)
 ;
+
 
 
 -- 4. How many italian dishes are on the menu?
@@ -103,12 +110,33 @@ FROM order_details
 GROUP BY DAYNAME(order_date)
 ORDER BY total_orders DESC
 
+
 -- 2. How many orders were made within this date range? How many items were ordered within this date range?
 SELECT
 	COUNT(DISTINCT order_id) AS order_count,
     COUNT(order_id) AS items_ordered
 FROM order_details;
 
+-- 2a. How much revenue has been generated since the launch of the new menu
+SELECT
+	SUM(m.price) AS total_revenue
+FROM order_details o 
+	inner JOIN menu_items m
+		ON o.item_id = m.menu_item_id;
+        
+-- 2ab. Revenue by category
+SELECT
+	m.category AS category,
+    COUNT(*) AS total_orders,
+    SUM(m.price) AS revenue
+FROM order_details o
+INNER JOIN menu_items m
+	ON o.item_id = m.menu_item_id
+GROUP BY 
+	category
+ORDER BY
+	SUM(m.price) DESC;
+        
 
 -- 3. Which orders had the most number of items?
 SELECT
@@ -227,7 +255,41 @@ ORDER BY
     o.order_id,
     m.item_name;
 
-
+-- 6. Most ordered dish, least ordered dish in each category (Italian, Asian, Mexican, American)
+WITH dish_orders AS (
+    SELECT
+        m.category,
+        m.item_name,
+        COUNT(*) AS orders
+    FROM order_details o
+    JOIN menu_items m
+      ON o.item_id = m.menu_item_id
+    GROUP BY
+        m.category,
+        m.item_name
+),
+category_extremes AS (
+    SELECT
+        category,
+        MAX(orders) AS max_orders,
+        MIN(orders) AS min_orders
+    FROM dish_orders
+    GROUP BY category
+)
+SELECT
+    d.category,
+    d.item_name,
+    d.orders,
+    CASE
+        WHEN d.orders = e.max_orders THEN 'Most ordered'
+        WHEN d.orders = e.min_orders THEN 'Least ordered'
+    END AS which_one
+FROM dish_orders d
+JOIN category_extremes e
+  ON d.category = e.category
+WHERE d.orders = e.max_orders
+   OR d.orders = e.min_orders
+ORDER BY d.category, which_one;
 
 
 
